@@ -283,6 +283,11 @@ public:
     dynamic_bitset operator<<(size_type n) const;
     dynamic_bitset operator>>(size_type n) const;
 
+    dynamic_bitset& iand(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len);
+    dynamic_bitset& ior(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len);
+    dynamic_bitset& ixor(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len);
+    dynamic_bitset& isub(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len);
+
     // basic bit operations
     dynamic_bitset& set(size_type n, size_type len, bool val /* = true */); // default would make it ambiguous
     dynamic_bitset& set(size_type n, bool val = true);
@@ -324,6 +329,11 @@ public:
     // lookup
     size_type find_first() const;
     size_type find_next(size_type pos) const;
+
+    bool equal(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len) const;
+    bool not_equal(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len) const;
+
+    bool intersects(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len) const;
 
 
 #if !defined BOOST_DYNAMIC_BITSET_DONT_USE_FRIENDS
@@ -372,6 +382,15 @@ private:
     dynamic_bitset& range_operation(size_type pos, size_type len,
         Block (*partial_block_operation)(Block, size_type, size_type),
         Block (*full_block_operation)(Block));
+    dynamic_bitset& range_operation_pair(size_type a_pos,
+        const dynamic_bitset& b, size_type b_pos, size_type len,
+        Block (*partial_block_operation)(Block, Block, size_type, size_type),
+        Block (*full_block_operation)(Block, Block) );
+    bool boolean_range_operation_pair(size_type a_pos,
+        const dynamic_bitset& b, size_type b_pos, size_type len,
+        bool (*partial_block_operation)(Block, Block, size_type, size_type),
+        bool (*full_block_operation)(Block, Block) ) const;
+
     void m_zero_unused_bits();
     bool m_check_invariants() const;
 
@@ -425,6 +444,58 @@ private:
     inline static Block flip_block_full(Block block) BOOST_NOEXCEPT
     {
         return ~block;
+    }
+    inline static Block and_partial(Block lhs, Block rhs,
+        size_type first, size_type last) BOOST_NOEXCEPT
+    {
+        return (lhs & rhs) | ((~bit_mask(first, last)) & lhs);
+    }
+    inline static Block and_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    {
+        return lhs & rhs;
+    }
+    inline static Block or_partial(Block lhs, Block rhs,
+        size_type first, size_type last) BOOST_NOEXCEPT
+    {
+        return (lhs | (rhs & bit_mask(first, last)));
+    }
+    inline static Block or_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    {
+        return lhs | rhs;
+    }
+    inline static Block xor_partial(Block lhs, Block rhs,
+        size_type first, size_type last) BOOST_NOEXCEPT
+    {
+        return (lhs ^ (rhs & bit_mask(first, last)));
+    }
+    inline static Block xor_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    {
+        return lhs ^ rhs;
+    }
+    inline static Block difference_partial(Block lhs, Block rhs,
+        size_type first, size_type last) BOOST_NOEXCEPT
+    {
+        return (lhs & (~rhs)) & bit_mask(first, last);
+    }
+    inline static Block difference_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    {
+        return lhs & (~rhs);
+    }
+    inline static bool not_equal_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    {
+        return lhs != rhs;
+    }
+    inline static bool not_equal_partial(Block lhs, Block rhs, size_type first, size_type last) BOOST_NOEXCEPT
+    {
+        return (lhs & bit_mask(first, last)) != (rhs & bit_mask(first, last));
+    }
+    inline static bool intersects_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    {
+        return lhs & rhs;
+    }
+    inline static bool intersects_partial(Block lhs, Block rhs, size_type first, size_type last) BOOST_NOEXCEPT
+    {
+        return (lhs & bit_mask(first, last)) & (rhs & bit_mask(first, last));
     }
 
     template <typename CharT, typename Traits, typename Alloc>
@@ -636,6 +707,35 @@ template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>
 operator-(const dynamic_bitset<Block, Allocator>& b1,
           const dynamic_bitset<Block, Allocator>& b2);
+
+//partial bitset functions
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator> pand(const dynamic_bitset<Block, Allocator>& b1,
+          const dynamic_bitset<Block, Allocator>& b2,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len);
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator> por(const dynamic_bitset<Block, Allocator>& b1,
+          const dynamic_bitset<Block, Allocator>& b2,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len);
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator> pxor(const dynamic_bitset<Block, Allocator>& b1,
+          const dynamic_bitset<Block, Allocator>& b2,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len);
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator> psub(const dynamic_bitset<Block, Allocator>& b1,
+          const dynamic_bitset<Block, Allocator>& b2,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len);
 
 // namespace scope swap
 template<typename Block, typename Allocator>
@@ -867,6 +967,14 @@ dynamic_bitset<Block, Allocator>::operator&=(const dynamic_bitset& rhs)
 
 template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>&
+dynamic_bitset<Block, Allocator>::iand(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len)
+{
+    return range_operation_pair(n_lhs, rhs, n_rhs, len, and_partial, and_full);
+    
+}
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator|=(const dynamic_bitset& rhs)
 {
     assert(size() == rhs.size());
@@ -874,6 +982,14 @@ dynamic_bitset<Block, Allocator>::operator|=(const dynamic_bitset& rhs)
         m_bits[i] |= rhs.m_bits[i];
     //m_zero_unused_bits();
     return *this;
+}
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>&
+dynamic_bitset<Block, Allocator>::ior(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len)
+{
+    return range_operation_pair(n_lhs, rhs, n_rhs, len, or_partial, or_full);
+    
 }
 
 template <typename Block, typename Allocator>
@@ -889,6 +1005,14 @@ dynamic_bitset<Block, Allocator>::operator^=(const dynamic_bitset& rhs)
 
 template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>&
+dynamic_bitset<Block, Allocator>::ixor(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len)
+{
+    return range_operation_pair(n_lhs, rhs, n_rhs, len, xor_partial, xor_full);
+    
+}
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator-=(const dynamic_bitset& rhs)
 {
     assert(size() == rhs.size());
@@ -896,6 +1020,13 @@ dynamic_bitset<Block, Allocator>::operator-=(const dynamic_bitset& rhs)
         m_bits[i] &= ~rhs.m_bits[i];
     //m_zero_unused_bits();
     return *this;
+}
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>&
+dynamic_bitset<Block, Allocator>::isub(const dynamic_bitset& rhs, size_type n_lhs, size_type n_rhs, size_type len)
+{
+    return range_operation_pair(n_lhs, rhs, n_rhs, len, difference_partial, difference_full);    
 }
 
 //
@@ -1435,6 +1566,14 @@ bool dynamic_bitset<Block, Allocator>::intersects(const dynamic_bitset & b) cons
     return false;
 }
 
+template <typename Block, typename Allocator>
+bool dynamic_bitset<Block, Allocator>::intersects(//const dynamic_bitset<Block, Allocator>& a,
+           const dynamic_bitset<Block, Allocator>& b,
+           size_type a_pos, size_type b_pos, size_type len) const
+{
+    return boolean_range_operation_pair(a_pos, b, b_pos, len, intersects_partial, intersects_full);
+}
+
 // --------------------------------
 // lookup
 
@@ -1624,6 +1763,23 @@ inline bool operator>=(const dynamic_bitset<Block, Allocator>& a,
                        const dynamic_bitset<Block, Allocator>& b)
 {
     return !(a < b);
+}
+
+template <typename Block, typename Allocator>
+bool dynamic_bitset<Block, Allocator>::not_equal(//const dynamic_bitset<Block, Allocator>& a,
+           const dynamic_bitset<Block, Allocator>& b,
+           size_type n_a, size_type n_b, size_type len) const
+{
+    return boolean_range_operation_pair(n_a, b, n_b, len, not_equal_partial, not_equal_full);
+    
+}
+
+template <typename Block, typename Allocator>
+bool dynamic_bitset<Block, Allocator>::equal(//const dynamic_bitset<Block, Allocator>& a,
+           const dynamic_bitset<Block, Allocator>& b,
+           size_type a_pos, size_type b_pos, size_type len) const
+{
+    return !(this->not_equal(b, a_pos, b_pos, len));
 }
 
 //-----------------------------------------------------------------------------
@@ -1984,6 +2140,54 @@ operator-(const dynamic_bitset<Block, Allocator>& x,
     return b -= y;
 }
 
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>
+pand(const dynamic_bitset<Block, Allocator>& x,
+          const dynamic_bitset<Block, Allocator>& y,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len)
+{
+    dynamic_bitset<Block, Allocator> b(x);
+    return b.iand(y, pos_lhs, pos_rhs, len);
+}
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>
+por(const dynamic_bitset<Block, Allocator>& x,
+          const dynamic_bitset<Block, Allocator>& y,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len)
+{
+    dynamic_bitset<Block, Allocator> b(x);
+    return b.ior(y, pos_lhs, pos_rhs, len);
+}
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>
+pxor(const dynamic_bitset<Block, Allocator>& x,
+          const dynamic_bitset<Block, Allocator>& y,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len)
+{
+    dynamic_bitset<Block, Allocator> b(x);
+    return b.ixor(y, pos_lhs, pos_rhs, len);
+}
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>
+psub(const dynamic_bitset<Block, Allocator>& x,
+          const dynamic_bitset<Block, Allocator>& y,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_lhs,
+          typename dynamic_bitset<Block, Allocator>::size_type pos_rhs,
+          typename dynamic_bitset<Block, Allocator>::size_type len)
+{
+    dynamic_bitset<Block, Allocator> b(x);
+    return b.isub(y, pos_lhs, pos_rhs, len);
+}
+
 //-----------------------------------------------------------------------------
 // namespace scope swap
 
@@ -2083,6 +2287,268 @@ dynamic_bitset<Block, Allocator>& dynamic_bitset<Block, Allocator>::range_operat
 
     return *this;
 }
+
+template <typename Block, typename Allocator>
+dynamic_bitset<Block, Allocator>& dynamic_bitset<Block, Allocator>::range_operation_pair(
+    size_type a_pos, const dynamic_bitset& b, size_type b_pos, size_type len,
+    Block (*partial_block_operation)(Block, Block, size_type, size_type),
+    Block (*full_block_operation)(Block, Block))
+{
+    assert((a_pos + len <= m_num_bits) && (b_pos + len <= b.m_num_bits));
+
+    // Do nothing in case of zero length
+    if (!len)
+        return *this;
+
+    // Use an additional asserts in order to detect size_type overflow
+    // For example: pos = 10, len = size_type_limit - 2, pos + len = 7
+    // In case of overflow, 'pos + len' is always smaller than 'len'
+    assert( (a_pos + len >= len) && (b_pos + len >= len));
+
+    // Start and end blocks of the [pos; pos + len - 1] sequence
+    const size_type a_first_block = block_index(a_pos);
+    const size_type a_last_block = block_index(a_pos + len - 1);
+
+    const size_type a_first_bit_index = bit_index(a_pos);
+    const size_type a_last_bit_index = bit_index(a_pos + len - 1);
+
+    // Start and end blocks of the b [pos; pos + len - 1] sequence
+    const size_type b_first_block = block_index(b_pos);
+    const size_type b_last_block = block_index(b_pos + len - 1);
+
+    const size_type b_first_bit_index = bit_index(b_pos);
+    const size_type b_last_bit_index = bit_index(b_pos + len - 1);
+
+    //fast case possible, if a_first_bit_index == b_first_bit_index
+    {
+
+        const size_type a_first_block_shift = a_first_bit_index ? 1 : 0;
+        const size_type a_last_block_shift = (a_last_bit_index 
+                == bits_per_block - 1) ? 0 : 1;
+
+        if ( a_first_block == a_last_block ) {
+            // Filling only a sub-block of a block
+
+            Block assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, std::max(b_first_bit_index + len, bits_per_block - 1));
+            if (b_first_bit_index >= a_first_bit_index) {
+                assembled_b >>= (b_first_bit_index - a_first_bit_index);
+            }else{
+                assembled_b <<= (a_first_bit_index - b_first_bit_index);
+            }
+            if (b_first_bit_index + len > bits_per_block - 1) {
+                assert(b_first_block + 1 <= b_last_block);
+                assembled_b = (b.m_bits[b_first_block + 1] & bit_mask(0, len - b_first_bit_index - bits_per_block + 1)) <<  (std::min(bits_per_block, len));
+            }
+            m_bits[a_first_block] = partial_block_operation(m_bits[a_first_block],
+                assembled_b,
+                a_first_bit_index, a_last_bit_index);
+        }else{
+	    // Regular blocks that will be broken similarly
+            const size_type a_first_full_block = a_first_block + a_first_block_shift;
+            const size_type a_last_full_block = a_last_block - a_last_block_shift;
+
+            size_type b_start_index_first_block = b_pos;
+            if (a_first_block_shift) {
+                //b_start_index_first_block += (bits_per_block - 1) - a_first_bit_index;
+                b_start_index_first_block = (bits_per_block + b_pos - a_pos) % bits_per_block;
+            }
+            const size_type b_last_index_first_block = bits_per_block - 1;
+            const size_type b_last_index_second_block = bits_per_block - 1 - b_start_index_first_block;
+
+            for (size_type i = a_first_full_block; i <= a_last_full_block; ++i) {
+                //blocks from a are the main iterator. b is adjusted to compute a
+                //full block operation
+
+                //size_type b_block = block_index( (i * bits_per_block) + b_first_bit_index );
+                size_type b_block = block_index( (i * bits_per_block) - a_pos + b_pos );
+                //size_type b_start_index_first_block = bit_index(((i - a_first_full_block) * bits_per_block) - a_first_bit_index + b_pos);
+                assert(b_block <= b_last_block);
+                Block assembled_b = (b.m_bits[b_block] & bit_mask(b_start_index_first_block, b_last_index_first_block)) >> b_start_index_first_block;
+                if (b_start_index_first_block != 0 && b_block + 1 <= b_last_block) {
+                    assert(b_block + 1 <= b_last_block);
+                    assembled_b |= (b.m_bits[b_block + 1] & bit_mask(0, b_last_index_second_block)) << b_last_index_first_block;
+                }
+
+                m_bits[i] = full_block_operation(m_bits[i], assembled_b);
+
+            }
+
+            // Fill the first block from the 'first' bit index to the end
+            if (a_first_block_shift) {
+               Block assembled_b;
+               if (b_first_bit_index >= a_first_bit_index) {
+                   assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, bits_per_block - 1);
+                   assembled_b >>= (b_first_bit_index - a_first_bit_index);
+                   assert(b_first_block + 1 <= b_last_block);
+                   if (b_first_bit_index - 1 >= a_first_bit_index) {
+                       assembled_b |= (b.m_bits[b_first_block + 1] & bit_mask(0, b_first_bit_index - a_first_bit_index - 1) ) << (bits_per_block - b_first_bit_index + a_first_bit_index); 
+                   }
+               }else{
+                   assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, (bits_per_block + b_first_bit_index - a_first_bit_index - 1) % bits_per_block );
+                   assembled_b <<= (a_first_bit_index - b_first_bit_index);                   
+               }       
+               
+               m_bits[a_first_block] = partial_block_operation(m_bits[a_first_block],
+                    assembled_b, a_first_bit_index, bits_per_block - 1);
+            }
+
+            // Fill the last block from the start to the 'last' bit index
+            if (a_last_block_shift) {
+                Block assembled_b;
+                if (b_last_bit_index >= a_last_bit_index){
+                    assembled_b = b.m_bits[b_last_block] & bit_mask( b_last_bit_index - a_last_bit_index, b_last_bit_index);
+                    assembled_b >>= (b_last_bit_index - a_last_bit_index);
+                }else{
+                    assembled_b = b.m_bits[b_last_block - 1] & bit_mask( bits_per_block + b_last_bit_index - a_last_bit_index, bits_per_block - 1);
+                    assembled_b >>= (bits_per_block + b_last_bit_index - a_last_bit_index);
+
+                    assembled_b |= (b.m_bits[b_last_block] & bit_mask(0, b_last_bit_index)) << (a_last_bit_index - b_last_bit_index);
+                }
+                
+                m_bits[a_last_block] = partial_block_operation(m_bits[a_last_block],
+                    assembled_b, 0, a_last_bit_index);
+            }
+        }
+
+    }
+
+    return *this;
+}
+
+template <typename Block, typename Allocator>
+bool dynamic_bitset<Block, Allocator>::boolean_range_operation_pair(
+    size_type a_pos, const dynamic_bitset& b, size_type b_pos, size_type len,
+    bool (*partial_block_operation)(Block, Block, size_type, size_type),
+    bool (*full_block_operation)(Block, Block)) const
+{
+    assert((a_pos + len <= m_num_bits) && (b_pos + len <= b.m_num_bits));
+
+    // Return false in case of zero length
+    if (!len)
+        return false;
+
+    // Use an additional asserts in order to detect size_type overflow
+    // For example: pos = 10, len = size_type_limit - 2, pos + len = 7
+    // In case of overflow, 'pos + len' is always smaller than 'len'
+    assert( (a_pos + len >= len) && (b_pos + len >= len));
+
+    // Start and end blocks of the [pos; pos + len - 1] sequence
+    const size_type a_first_block = block_index(a_pos);
+    const size_type a_last_block = block_index(a_pos + len - 1);
+
+    const size_type a_first_bit_index = bit_index(a_pos);
+    const size_type a_last_bit_index = bit_index(a_pos + len - 1);
+
+    // Start and end blocks of the b [pos; pos + len - 1] sequence
+    const size_type b_first_block = block_index(b_pos);
+    const size_type b_last_block = block_index(b_pos + len - 1);
+
+    const size_type b_first_bit_index = bit_index(b_pos);
+    const size_type b_last_bit_index = bit_index(b_pos + len - 1);
+
+    //fast case possible, if a_first_bit_index == b_first_bit_index
+    {
+
+        const size_type a_first_block_shift = a_first_bit_index ? 1 : 0;
+        const size_type a_last_block_shift = (a_last_bit_index 
+                == bits_per_block - 1) ? 0 : 1;
+
+        if ( a_first_block == a_last_block ) {
+            // Filling only a sub-block of a block
+
+            Block assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, std::max(b_first_bit_index + len, bits_per_block - 1));
+            if (b_first_bit_index >= a_first_bit_index) {
+                assembled_b >>= (b_first_bit_index - a_first_bit_index);
+            }else{
+                assembled_b <<= (a_first_bit_index - b_first_bit_index);
+            }
+            if (b_first_bit_index + len > bits_per_block - 1) {
+                assert(b_first_block + 1 <= b_last_block);
+                assembled_b = (b.m_bits[b_first_block + 1] & bit_mask(0, len - b_first_bit_index - bits_per_block + 1)) <<  (std::min(bits_per_block, len));
+            }
+            if ( partial_block_operation(m_bits[a_first_block],
+                assembled_b,
+                a_first_bit_index, a_last_bit_index)){
+                 return true;
+            }
+        }else{
+	    // Regular blocks that will be broken similarly
+            const size_type a_first_full_block = a_first_block + a_first_block_shift;
+            const size_type a_last_full_block = a_last_block - a_last_block_shift;
+
+            size_type b_start_index_first_block = b_pos;
+            if (a_first_block_shift) {
+                //b_start_index_first_block += (bits_per_block - 1) - a_first_bit_index;
+                b_start_index_first_block = (bits_per_block + b_pos - a_pos) % bits_per_block;
+            }
+            const size_type b_last_index_first_block = bits_per_block - 1;
+            const size_type b_last_index_second_block = bits_per_block - 1 - b_start_index_first_block;
+
+            for (size_type i = a_first_full_block; i <= a_last_full_block; ++i) {
+                //blocks from a are the main iterator. b is adjusted to compute a
+                //full block operation
+
+                size_type b_block = block_index( (i * bits_per_block) - a_pos + b_pos );
+                //size_type b_start_index_first_block = bit_index(((i - a_first_full_block) * bits_per_block) - a_first_bit_index + b_pos);
+                assert(b_block <= b_last_block);
+                Block assembled_b = (b.m_bits[b_block] & bit_mask(b_start_index_first_block, b_last_index_first_block)) >> b_start_index_first_block;
+                if (b_start_index_first_block != 0 && b_block + 1 <= b_last_block) {
+                    assert(b_block + 1 <= b_last_block);
+                    assembled_b |= (b.m_bits[b_block + 1] & bit_mask(0, b_last_index_second_block)) << b_last_index_first_block;
+                }
+
+                if ( full_block_operation(m_bits[i], assembled_b)){
+                    return true;
+                }
+
+            }
+
+            // Fill the first block from the 'first' bit index to the end
+            if (a_first_block_shift) {
+               Block assembled_b;
+               if (b_first_bit_index >= a_first_bit_index) {
+                   assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, bits_per_block - 1);
+                   assembled_b >>= (b_first_bit_index - a_first_bit_index);
+                   assert(b_first_block + 1 <= b_last_block);
+                   if (b_first_bit_index - 1 >= a_first_bit_index) {
+                       assembled_b |= (b.m_bits[b_first_block + 1] & bit_mask(0, b_first_bit_index - a_first_bit_index - 1) ) << (bits_per_block - b_first_bit_index + a_first_bit_index); 
+                   }
+               }else{
+                   assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, (bits_per_block + b_first_bit_index - a_first_bit_index - 1) % bits_per_block );
+                   assembled_b <<= (a_first_bit_index - b_first_bit_index);                   
+               }       
+               
+               if ( partial_block_operation(m_bits[a_first_block],
+                    assembled_b, a_first_bit_index, bits_per_block - 1)) {
+                    return true;
+               }
+            }
+
+            // Fill the last block from the start to the 'last' bit index
+            if (a_last_block_shift) {
+                Block assembled_b;
+                if (b_last_bit_index >= a_last_bit_index){
+                    assembled_b = b.m_bits[b_last_block] & bit_mask( b_last_bit_index - a_last_bit_index, b_last_bit_index);
+                    assembled_b >>= (b_last_bit_index - a_last_bit_index);
+                }else{
+                    assembled_b = b.m_bits[b_last_block - 1] & bit_mask( bits_per_block + b_last_bit_index - a_last_bit_index, bits_per_block - 1);
+                    assembled_b >>= (bits_per_block + b_last_bit_index - a_last_bit_index);
+
+                    assembled_b |= (b.m_bits[b_last_block] & bit_mask(0, b_last_bit_index)) << (a_last_bit_index - b_last_bit_index);
+                }
+                
+                if ( partial_block_operation(m_bits[a_last_block],
+                    assembled_b, 0, a_last_bit_index)){
+                    return true;
+                }
+            }
+        }
+
+    }
+
+    return false;
+}
+
 
 // If size() is not a multiple of bits_per_block
 // then not all the bits in the last block are used.

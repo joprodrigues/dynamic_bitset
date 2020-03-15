@@ -513,6 +513,19 @@ struct bitset_test {
       else
         BOOST_TEST(lhs[I] == prev[I]);
   }
+  static void and_assignment(const Bitset& b, const Bitset& rhs, std::size_t pos_b, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset lhs(b);
+    Bitset prev(lhs);
+    lhs.iand(rhs, pos_b, pos_rhs, len);
+    // Clears each bit in lhs for which the corresponding bit in rhs is
+    // clear, and leaves all other bits unchanged.
+    for (std::size_t I = 0; I < len; ++I)
+      if (rhs[I + pos_rhs] == 0)
+        BOOST_TEST(lhs[I + pos_b] == 0);
+      else
+        BOOST_TEST(lhs[I + pos_b] == prev[I + pos_b]);
+  }
 
   // PRE: b.size() == rhs.size()
   static void or_assignment(const Bitset& b, const Bitset& rhs)
@@ -527,6 +540,19 @@ struct bitset_test {
         BOOST_TEST(lhs[I] == 1);
       else
         BOOST_TEST(lhs[I] == prev[I]);
+  }
+  static void or_assignment(const Bitset& b, const Bitset& rhs, std::size_t pos_b, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset lhs(b);
+    Bitset prev(lhs);
+    lhs.ior(rhs, pos_b, pos_rhs, len);
+    // Clears each bit in lhs for which the corresponding bit in rhs is
+    // clear, and leaves all other bits unchanged.
+    for (std::size_t I = 0; I < len; ++I)
+      if (rhs[I + pos_rhs] == 1)
+        BOOST_TEST(lhs[I + pos_b] == 1);
+      else 
+        BOOST_TEST(lhs[I + pos_b] == prev[I + pos_b]);
   }
 
   // PRE: b.size() == rhs.size()
@@ -543,6 +569,19 @@ struct bitset_test {
       else
         BOOST_TEST(lhs[I] == prev[I]);
   }
+  static void xor_assignment(const Bitset& b, const Bitset& rhs, std::size_t pos_b, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset lhs(b);
+    Bitset prev(lhs);
+    lhs.ixor(rhs, pos_b, pos_rhs, len);
+    // Clears each bit in lhs for which the corresponding bit in rhs is
+    // clear, and leaves all other bits unchanged.
+    for (std::size_t I = 0; I < len; ++I)
+      if (rhs[I + pos_rhs] == 1)
+        BOOST_TEST(lhs[I + pos_b] == !prev[I + pos_b]);
+      else
+        BOOST_TEST(lhs[I + pos_b] == prev[I + pos_b]);
+  }
 
   // PRE: b.size() == rhs.size()
   static void sub_assignment(const Bitset& b, const Bitset& rhs)
@@ -557,6 +596,19 @@ struct bitset_test {
         BOOST_TEST(lhs[I] == 0);
       else
         BOOST_TEST(lhs[I] == prev[I]);
+  }
+  static void sub_assignment(const Bitset& b, const Bitset& rhs, std::size_t pos_b, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset lhs(b);
+    Bitset prev(lhs);
+    lhs.isub(rhs, pos_b, pos_rhs, len);
+    // Clears each bit in lhs for which the corresponding bit in rhs is
+    // clear, and leaves all other bits unchanged.
+    for (std::size_t I = 0; I < len; ++I)
+      if (rhs[I + pos_rhs] == 1)
+        BOOST_TEST(lhs[I + pos_b] == 0);
+      else
+        BOOST_TEST(lhs[I + pos_b] == prev[I + pos_b]);
   }
 
   static void shift_left_assignment(const Bitset& b, std::size_t pos)
@@ -966,6 +1018,19 @@ struct bitset_test {
     // also check commutativity
     BOOST_TEST(b.intersects(a) == have_intersection);
   }
+  static void intersects(const Bitset& a, const Bitset& b, std::size_t pos_a, std::size_t pos_b, std::size_t len)
+  {
+    bool have_intersection = false;
+
+    typename Bitset::size_type m = len;
+    for(typename Bitset::size_type i = 0; i < m && !have_intersection; ++i)
+      if(a[pos_a + i] == true && b[pos_b + i] == true)
+        have_intersection = true;
+
+    BOOST_TEST(a.intersects(b, pos_a, pos_b, len) == have_intersection);
+    // also check commutativity
+    BOOST_TEST(b.intersects(a, pos_b, pos_a, len) == have_intersection);
+  }
 
   static void find_first(const Bitset& b)
   {
@@ -1005,6 +1070,22 @@ struct bitset_test {
       }
     }
   }
+  static void operator_equal(const Bitset& a, const Bitset& b,
+      std::size_t pos_a, std::size_t pos_b, std::size_t len)
+  {
+    if (a.equal(b, pos_a, pos_b, len)) {
+      for (std::size_t I = 0; I < len; ++I)
+        BOOST_TEST(a[pos_a + I] == b[pos_b + I]);
+    } else {
+      bool diff = false;
+      for (std::size_t I = 0; I < len; ++I)
+        if (a[pos_a + I] != b[pos_b + I]) {
+          diff = true;
+          break;
+        }
+      BOOST_TEST(diff);
+    }
+  }
 
   static void operator_not_equal(const Bitset& a, const Bitset& b)
   {
@@ -1021,6 +1102,21 @@ struct bitset_test {
     } else {
       for (std::size_t I = 0; I < a.size(); ++I)
         BOOST_TEST(a[I] == b[I]);
+    }
+  }
+  static void operator_not_equal(const Bitset& a, const Bitset& b, std::size_t pos_a, std::size_t pos_b, std::size_t len)
+  {
+    if (a.not_equal(b, pos_a, pos_b, len)) {
+      bool diff = false;
+      for (std::size_t I = 0; I < len; ++I)
+        if (a[pos_a + I] != b[pos_b + I]) {
+          diff = true;
+          break;
+        }
+      BOOST_TEST(diff);
+    } else {
+      for (std::size_t I = 0; I < len; ++I)
+        BOOST_TEST(a[pos_a + I] == b[pos_b + I]);
     }
   }
 
@@ -1165,6 +1261,12 @@ struct bitset_test {
     Bitset x(lhs);
     BOOST_TEST((lhs | rhs) == (x |= rhs));
   }
+  static
+  void operator_or(const Bitset& lhs, const Bitset& rhs, std::size_t pos_lhs, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset x(lhs);
+    BOOST_TEST((por(lhs, rhs, pos_lhs, pos_rhs, len)) == (x.ior(rhs, pos_lhs, pos_rhs, len)));
+  }
 
   // operator&
   static
@@ -1172,6 +1274,12 @@ struct bitset_test {
   {
     Bitset x(lhs);
     BOOST_TEST((lhs & rhs) == (x &= rhs));
+  }
+  static
+  void operator_and(const Bitset& lhs, const Bitset& rhs, std::size_t pos_lhs, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset x(lhs);
+    BOOST_TEST((pand(lhs, rhs, pos_lhs, pos_rhs, len)) == (x.iand(rhs, pos_lhs, pos_rhs, len)));
   }
 
   // operator^
@@ -1181,6 +1289,12 @@ struct bitset_test {
     Bitset x(lhs);
     BOOST_TEST((lhs ^ rhs) == (x ^= rhs));
   }
+  static
+  void operator_xor(const Bitset& lhs, const Bitset& rhs, std::size_t pos_lhs, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset x(lhs);
+    BOOST_TEST((pxor(lhs, rhs, pos_lhs, pos_rhs, len)) == (x.ixor(rhs, pos_lhs, pos_rhs, len)));
+  }
 
   // operator-
   static
@@ -1188,6 +1302,12 @@ struct bitset_test {
   {
     Bitset x(lhs);
     BOOST_TEST((lhs - rhs) == (x -= rhs));
+  }
+  static
+  void operator_sub(const Bitset& lhs, const Bitset& rhs, std::size_t pos_lhs, std::size_t pos_rhs, std::size_t len)
+  {
+    Bitset x(lhs);
+    BOOST_TEST((psub(lhs, rhs, pos_lhs, pos_rhs, len)) == (x.isub(rhs, pos_lhs, pos_rhs, len)));
   }
 
 //------------------------------------------------------------------------------
