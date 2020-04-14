@@ -475,7 +475,7 @@ private:
     inline static Block difference_partial(Block lhs, Block rhs,
         size_type first, size_type last) BOOST_NOEXCEPT
     {
-        return (lhs & (~rhs)) & bit_mask(first, last);
+	return (lhs & ~(rhs & bit_mask(first, last)));
     }
     inline static Block difference_full(Block lhs, Block rhs) BOOST_NOEXCEPT
     {
@@ -2329,15 +2329,15 @@ dynamic_bitset<Block, Allocator>& dynamic_bitset<Block, Allocator>::range_operat
         if ( a_first_block == a_last_block ) {
             // Filling only a sub-block of a block
 
-            Block assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, std::max(b_first_bit_index + len, bits_per_block - 1));
+            Block assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, std::min(b_first_bit_index + len, bits_per_block - 1));
             if (b_first_bit_index >= a_first_bit_index) {
                 assembled_b >>= (b_first_bit_index - a_first_bit_index);
             }else{
                 assembled_b <<= (a_first_bit_index - b_first_bit_index);
             }
-            if (b_first_bit_index + len > bits_per_block - 1) {
+            if (b_first_bit_index + len > bits_per_block) {
                 assert(b_first_block + 1 <= b_last_block);
-                assembled_b = (b.m_bits[b_first_block + 1] & bit_mask(0, len - b_first_bit_index - bits_per_block + 1)) <<  (std::min(bits_per_block, len));
+                assembled_b = (b.m_bits[b_first_block + 1] & bit_mask(0, len + b_first_bit_index + 1 - bits_per_block)) << (bits_per_block + a_first_bit_index - b_first_bit_index);
             }
             m_bits[a_first_block] = partial_block_operation(m_bits[a_first_block],
                 assembled_b,
@@ -2347,13 +2347,12 @@ dynamic_bitset<Block, Allocator>& dynamic_bitset<Block, Allocator>::range_operat
             const size_type a_first_full_block = a_first_block + a_first_block_shift;
             const size_type a_last_full_block = a_last_block - a_last_block_shift;
 
-            size_type b_start_index_first_block = b_pos;
+            size_type b_start_index_first_block = b_pos % bits_per_block;
             if (a_first_block_shift) {
                 //b_start_index_first_block += (bits_per_block - 1) - a_first_bit_index;
                 b_start_index_first_block = (bits_per_block + b_pos - a_pos) % bits_per_block;
             }
             const size_type b_last_index_first_block = bits_per_block - 1;
-            const size_type b_last_index_second_block = bits_per_block - 1 - b_start_index_first_block;
 
             for (size_type i = a_first_full_block; i <= a_last_full_block; ++i) {
                 //blocks from a are the main iterator. b is adjusted to compute a
@@ -2366,7 +2365,7 @@ dynamic_bitset<Block, Allocator>& dynamic_bitset<Block, Allocator>::range_operat
                 Block assembled_b = (b.m_bits[b_block] & bit_mask(b_start_index_first_block, b_last_index_first_block)) >> b_start_index_first_block;
                 if (b_start_index_first_block != 0 && b_block + 1 <= b_last_block) {
                     assert(b_block + 1 <= b_last_block);
-                    assembled_b |= (b.m_bits[b_block + 1] & bit_mask(0, b_last_index_second_block)) << b_last_index_first_block;
+                    assembled_b |= (b.m_bits[b_block + 1] & bit_mask(0, b_start_index_first_block - 1)) << (b_last_index_first_block + 1 - b_start_index_first_block);
                 }
 
                 m_bits[i] = full_block_operation(m_bits[i], assembled_b);
@@ -2456,45 +2455,45 @@ bool dynamic_bitset<Block, Allocator>::boolean_range_operation_pair(
         if ( a_first_block == a_last_block ) {
             // Filling only a sub-block of a block
 
-            Block assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, std::max(b_first_bit_index + len, bits_per_block - 1));
+            Block assembled_b = b.m_bits[b_first_block] & bit_mask(b_first_bit_index, std::min(b_first_bit_index + len - 1, bits_per_block - 1));
             if (b_first_bit_index >= a_first_bit_index) {
                 assembled_b >>= (b_first_bit_index - a_first_bit_index);
             }else{
                 assembled_b <<= (a_first_bit_index - b_first_bit_index);
             }
-            if (b_first_bit_index + len > bits_per_block - 1) {
+            if (b_first_bit_index + len > bits_per_block) {
                 assert(b_first_block + 1 <= b_last_block);
-                assembled_b = (b.m_bits[b_first_block + 1] & bit_mask(0, len - b_first_bit_index - bits_per_block + 1)) <<  (std::min(bits_per_block, len));
+                assembled_b = (b.m_bits[b_first_block + 1] & bit_mask(0, len + b_first_bit_index + 1 - bits_per_block)) << (bits_per_block + a_first_bit_index - b_first_bit_index);
             }
             if ( partial_block_operation(m_bits[a_first_block],
                 assembled_b,
                 a_first_bit_index, a_last_bit_index)){
-                 return true;
+                    return true;
             }
         }else{
 	    // Regular blocks that will be broken similarly
             const size_type a_first_full_block = a_first_block + a_first_block_shift;
             const size_type a_last_full_block = a_last_block - a_last_block_shift;
 
-            size_type b_start_index_first_block = b_pos;
+            size_type b_start_index_first_block = b_pos % bits_per_block;
             if (a_first_block_shift) {
-                //b_start_index_first_block += (bits_per_block - 1) - a_first_bit_index;
-                b_start_index_first_block = (bits_per_block + b_pos - a_pos) % bits_per_block;
+                b_start_index_first_block = (bits_per_block + b_first_bit_index - a_first_bit_index) % bits_per_block;
             }
             const size_type b_last_index_first_block = bits_per_block - 1;
-            const size_type b_last_index_second_block = bits_per_block - 1 - b_start_index_first_block;
+            
+            size_type b_block = block_index( (a_first_full_block * bits_per_block) - a_pos + b_pos );
+            if(a_last_full_block >= a_first_full_block){
+                assert(block_index( (a_last_full_block * bits_per_block) - a_pos + b_pos ) <= b_last_block);
+            }
 
-            for (size_type i = a_first_full_block; i <= a_last_full_block; ++i) {
+            for (size_type i = a_first_full_block; i <= a_last_full_block; ++i, ++b_block) {
                 //blocks from a are the main iterator. b is adjusted to compute a
                 //full block operation
-
-                size_type b_block = block_index( (i * bits_per_block) - a_pos + b_pos );
-                //size_type b_start_index_first_block = bit_index(((i - a_first_full_block) * bits_per_block) - a_first_bit_index + b_pos);
-                assert(b_block <= b_last_block);
+                
                 Block assembled_b = (b.m_bits[b_block] & bit_mask(b_start_index_first_block, b_last_index_first_block)) >> b_start_index_first_block;
                 if (b_start_index_first_block != 0 && b_block + 1 <= b_last_block) {
                     assert(b_block + 1 <= b_last_block);
-                    assembled_b |= (b.m_bits[b_block + 1] & bit_mask(0, b_last_index_second_block)) << b_last_index_first_block;
+                    assembled_b |= (b.m_bits[b_block + 1] & bit_mask(0, b_start_index_first_block - 1)) << (b_last_index_first_block + 1 - b_start_index_first_block);
                 }
 
                 if ( full_block_operation(m_bits[i], assembled_b)){
