@@ -118,7 +118,7 @@ public:
         reference& operator^=(bool x) { if  (x) do_flip();  return *this; }
         reference& operator-=(bool x) { if  (x) do_reset(); return *this; }
 
-    private:
+     private:
         block_type & m_block;
         const block_type m_mask;
 
@@ -275,16 +275,15 @@ public:
         }
     }
 
-    dynamic_bitset& operator<<=(size_type n);
-    dynamic_bitset& operator>>=(size_type n);
-    dynamic_bitset operator<<(size_type n) const;
-    dynamic_bitset operator>>(size_type n) const;
-
     // bitset operations
     dynamic_bitset& operator&=(const dynamic_bitset& rhs);
     dynamic_bitset& operator|=(const dynamic_bitset& rhs);
     dynamic_bitset& operator^=(const dynamic_bitset& rhs);
     dynamic_bitset& operator-=(const dynamic_bitset& rhs);
+    dynamic_bitset& operator<<=(size_type n);
+    dynamic_bitset& operator>>=(size_type n);
+    dynamic_bitset operator<<(size_type n) const;
+    dynamic_bitset operator>>(size_type n) const;
 
     // basic bit operations
     dynamic_bitset& set(size_type n, size_type len, bool val /* = true */); // default would make it ambiguous
@@ -328,7 +327,7 @@ public:
     size_type find_first() const;
     size_type find_next(size_type pos) const;
 
-    
+
 #if !defined BOOST_DYNAMIC_BITSET_DONT_USE_FRIENDS
     // lexicographical comparison
     template <typename B, typename A>
@@ -362,7 +361,6 @@ public:
 
     template <typename B, typename A>
     friend std::size_t hash_value(const dynamic_bitset<B, A>& a);
-
 #endif
 
 public:
@@ -477,21 +475,21 @@ private:
     {
         return lhs & (~rhs);
     }
-    inline static bool not_equal_full(Block lhs, Block rhs) BOOST_NOEXCEPT
-    {
-        return lhs != rhs;
-    }
     inline static bool not_equal_partial(Block lhs, Block rhs, size_type first, size_type last) BOOST_NOEXCEPT
     {
         return (lhs & bit_mask(first, last)) != (rhs & bit_mask(first, last));
     }
-    inline static bool intersects_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    inline static bool not_equal_full(Block lhs, Block rhs) BOOST_NOEXCEPT
     {
-        return lhs & rhs;
+        return lhs != rhs;
     }
     inline static bool intersects_partial(Block lhs, Block rhs, size_type first, size_type last) BOOST_NOEXCEPT
     {
-        return (lhs & bit_mask(first, last)) & (rhs & bit_mask(first, last));
+        return (lhs & rhs & bit_mask(first, last)) != Block(0);
+    }
+    inline static bool intersects_full(Block lhs, Block rhs) BOOST_NOEXCEPT
+    {
+        return (lhs & rhs) != Block(0);
     }
 
     template <typename CharT, typename Traits, typename Alloc>
@@ -742,7 +740,7 @@ template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator&=(const dynamic_bitset<Block, Allocator>& rhs)
 {
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(*this) &=  const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(rhs);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(*this) &=  const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(rhs);
     return *this;
 }
 
@@ -750,7 +748,7 @@ template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator|=(const dynamic_bitset<Block, Allocator>& rhs)
 {
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(*this) |= const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(rhs);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(*this) |= const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(rhs);
     return *this;
 
 }
@@ -759,7 +757,7 @@ template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator^=(const dynamic_bitset<Block, Allocator>& rhs)
 {
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(*this) ^= const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(rhs);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(*this) ^= const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(rhs);
     return *this;
 
 }
@@ -768,7 +766,7 @@ template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator-=(const dynamic_bitset<Block, Allocator>& rhs)
 {
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(*this) -= const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(rhs);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(*this) -= const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(rhs);
     return *this;
 
 }
@@ -828,29 +826,29 @@ operator>>(std::basic_istream<CharT, Traits>& is,
            dynamic_bitset<Block, Allocator>& b);
 #endif
 
-//
-template<typename Block, typename Allocator>
+// bitset operations
+template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>
 operator&(const dynamic_bitset<Block, Allocator>& b1,
           const dynamic_bitset<Block, Allocator>& b2);
 
-template<typename Block, typename Allocator>
+template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>
 operator|(const dynamic_bitset<Block, Allocator>& b1,
           const dynamic_bitset<Block, Allocator>& b2);
 
-template<typename Block, typename Allocator>
+template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>
 operator^(const dynamic_bitset<Block, Allocator>& b1,
           const dynamic_bitset<Block, Allocator>& b2);
 
-template<typename Block, typename Allocator>
+template <typename Block, typename Allocator>
 dynamic_bitset<Block, Allocator>
 operator-(const dynamic_bitset<Block, Allocator>& b1,
           const dynamic_bitset<Block, Allocator>& b2);
 
 // namespace scope swap
-template<typename Block, typename Allocator>
+template <typename Block, typename Allocator>
 void swap(dynamic_bitset<Block, Allocator>& b1,
           dynamic_bitset<Block, Allocator>& b2);
 
@@ -1641,8 +1639,8 @@ bool dynamic_bitset<Block, Allocator>::intersects(const dynamic_bitset & rhs) co
 {
     //for backwards compatibility with previous behaviour, if the two dynamic_bitsets
     //don't have the same length, choose the smallest length
-    const dynamic_bitset_span<dynamic_bitset<Block, Allocator>> wrapper = const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(*this, 0, std::min(size(), rhs.size()));
-    return wrapper.intersects(const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(rhs));
+    const dynamic_bitset_span< dynamic_bitset<Block, Allocator> > wrapper = const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(*this, 0, std::min(size(), rhs.size()));
+    return wrapper.intersects(const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(rhs));
 }
 
 template <class T>
@@ -2210,7 +2208,7 @@ operator&(const dynamic_bitset<Block, Allocator>& x,
           const dynamic_bitset<Block, Allocator>& y)
 {
     dynamic_bitset<Block, Allocator> b(x);
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(b) &= const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(y);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(b) &= const_dynamic_bitset_span<dynamic_bitset< Block, Allocator> >(y);
     return b;
 }
 
@@ -2220,7 +2218,7 @@ operator|(const dynamic_bitset<Block, Allocator>& x,
           const dynamic_bitset<Block, Allocator>& y)
 {
     dynamic_bitset<Block, Allocator> b(x);
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(b) |= const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(y);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(b) |= const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(y);
     return b;
 }
 
@@ -2230,7 +2228,7 @@ operator^(const dynamic_bitset<Block, Allocator>& x,
           const dynamic_bitset<Block, Allocator>& y)
 {
     dynamic_bitset<Block, Allocator> b(x);
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(b) ^= const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(y);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(b) ^= const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(y);
     return b;
 }
 
@@ -2240,7 +2238,7 @@ operator-(const dynamic_bitset<Block, Allocator>& x,
           const dynamic_bitset<Block, Allocator>& y)
 {
     dynamic_bitset<Block, Allocator> b(x);
-    dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(b) -= const_dynamic_bitset_span<dynamic_bitset<Block, Allocator>>(y);
+    dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(b) -= const_dynamic_bitset_span< dynamic_bitset<Block, Allocator> >(y);
     return b;
 }
 
